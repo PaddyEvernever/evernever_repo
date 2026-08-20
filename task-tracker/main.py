@@ -1,5 +1,5 @@
 print("Welcome to your own task tracker!")
-print("1. Add the task\n2. Add the deadline\n3. Mark the status/n4. Выход")
+print("1. Add the task\n2. Add the deadline\n3. Mark the status\n4. Exit")
 tasks = {}
 while True:
     user_input = input("Choose action: ")
