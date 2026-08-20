@@ -17,4 +17,6 @@ while True:
         continue
 
 print(tasks)
+print("Привет, ки")
+
     
