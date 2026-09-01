@@ -1,11 +1,17 @@
-print("1. Add the task\n2. Add the deadline\n3. Mark the status\n4. Exit")
+print("1. Add the task\n2. Edit the task\n3. Delete the task\n4. List all tasks\n5. List task in the 'In Progress' status\n6. List task in the 'Done' status\n7. Complete the task")
 
 def add_task(task_dict):
     task = input("Add task: ")
-    deadline = input("Enter deadline")
-    
+    deadline = input("Enter deadline: ")
+    task_dict["task"] = task
+    task_dict["deadline"] = deadline
+    print("Task added succesfully")
+    print(task_dict)
 
-while True:
+add_task({})
+
+
+'''while True:
     user_input = int(input("Choose action: "))
     if user_input == 1:
         tasks['task'] = input()
@@ -18,6 +24,6 @@ while True:
         break
     else:
         print("Invalid input. Please, try again.")
-        continue
+        continue'''
 
 
