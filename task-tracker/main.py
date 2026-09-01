@@ -1,6 +1,10 @@
-print("Welcome to your own task tracker!")
 print("1. Add the task\n2. Add the deadline\n3. Mark the status\n4. Exit")
-tasks = {}
+
+def add_task(task_dict):
+    task = input("Add task: ")
+    deadline = input("Enter deadline")
+    
+
 while True:
     user_input = int(input("Choose action: "))
     if user_input == 1:
@@ -10,11 +14,10 @@ while True:
     elif user_input == 3:
         tasks['completion'] = None # I want to add "True / False" here
     elif user_input == 4:
-        print("Всего хоро-ше-го")
+        print(f"Your tasks: {tasks}")
         break
     else:
         print("Invalid input. Please, try again.")
         continue
 
-print(tasks)
-    
+
