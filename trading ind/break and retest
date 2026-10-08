@@ -1,0 +1,104 @@
+//@version=5
+indicator("Break & Retest v1 (demo)", overlay=true, max_labels_count=500)
+
+// ---- Параметры v1 (не менять во время теста) ----
+swingLen  = input.int(3, "Swing: баров слева и справа", minval=1)
+tolPct    = input.float(0.15, "Допуск касания и ретеста, %", step=0.05, minval=0.01) / 100
+maxRetest = input.int(15, "Макс. свечей до ретеста", minval=1)
+useTrend  = input.bool(true, "Фильтр тренда 1H (EMA)")
+emaLen    = input.int(50, "EMA для тренда 1H", minval=1)
+
+// ---- Тренд с 1H без заглядывания вперёд ----
+emaHTF  = request.security(syminfo.tickerid, "60", ta.ema(close, emaLen), lookahead=barmerge.lookahead_off)
+trendUp = close > emaHTF
+trendDn = close < emaHTF
+
+// ---- Swing-точки (подтверждаются через swingLen свечей) ----
+ph = ta.pivothigh(high, swingLen, swingLen)
+pl = ta.pivotlow(low, swingLen, swingLen)
+
+var float resLvl = na
+var int   resTch = 0
+var float supLvl = na
+var int   supTch = 0
+var int   brkBar  = 0
+var float brkLvl  = na
+var float brkLow  = na
+var float brkHigh = na
+var int   brkDir  = 0
+var int   retBar  = 0
+var bool  retSeen = false
+
+sigLong  = false
+sigShort = false
+
+if barstate.isconfirmed
+    // уровни: swing-точка рядом с предыдущей = касание
+    if not na(ph)
+        if not na(resLvl) and math.abs(ph - resLvl) / resLvl <= tolPct
+            resLvl := (resLvl + ph) / 2
+            resTch := resTch + 1
+        else
+            resLvl := ph
+            resTch := 1
+    if not na(pl)
+        if not na(supLvl) and math.abs(pl - supLvl) / supLvl <= tolPct
+            supLvl := (supLvl + pl) / 2
+            supTch := supTch + 1
+        else
+            supLvl := pl
+            supTch := 1
+
+    // пробой: закрытие за уровнем после 2+ касаний
+    longBreak  = not na(resLvl) and resTch >= 2 and close > resLvl and close[1] <= resLvl and (not useTrend or trendUp)
+    shortBreak = not na(supLvl) and supTch >= 2 and close < supLvl and close[1] >= supLvl and (not useTrend or trendDn)
+
+    if longBreak or shortBreak
+        brkDir  := longBreak ? 1 : -1
+        brkBar  := bar_index
+        brkLvl  := longBreak ? resLvl : supLvl
+        brkLow  := low
+        brkHigh := high
+        retSeen := false
+        retBar  := 0
+    else if brkDir != 0
+        if not retSeen and bar_index - brkBar > maxRetest
+            brkDir := 0  // ретеста не было в окне: сделки нет
+        else if bar_index > brkBar
+            if not retSeen
+                if brkDir == 1 and low <= brkLvl * (1 + tolPct)
+                    retSeen := true
+                    retBar  := bar_index
+                else if brkDir == -1 and high >= brkLvl * (1 - tolPct)
+                    retSeen := true
+                    retBar  := bar_index
+            else if bar_index > retBar
+                // подтверждение: свеча после ретеста закрылась за уровнем
+                if brkDir == 1 and close > brkLvl
+                    sigLong := true
+                else if brkDir == -1 and close < brkLvl
+                    sigShort := true
+                else if (brkDir == 1 and close < brkLvl) or (brkDir == -1 and close > brkLvl)
+                    brkDir := 0  // закрылась обратно внутри: ложный пробой, не считаем
+                if sigLong or sigShort
+                    brkDir := 0
+
+// ---- Отрисовка ----
+plotshape(sigLong, "Long", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(sigShort, "Short", shape.triangledown, location.abovebar, color.red, size=size.small)
+plot(resLvl, "Сопротивление", color=color.new(color.red, 40))
+plot(supLvl, "Поддержка", color=color.new(color.green, 40))
+
+if sigLong
+    e = close
+    s = brkLow
+    t = e + 2 * (e - s)
+    label.new(bar_index, low, "LONG\nentry " + str.tostring(e, format.mintick) + "\nstop " + str.tostring(s, format.mintick) + "\ntp " + str.tostring(t, format.mintick), style=label.style_label_up, color=color.new(color.green, 20), textcolor=color.white, size=size.small)
+if sigShort
+    e = close
+    s = brkHigh
+    t = e - 2 * (s - e)
+    label.new(bar_index, high, "SHORT\nentry " + str.tostring(e, format.mintick) + "\nstop " + str.tostring(s, format.mintick) + "\ntp " + str.tostring(t, format.mintick), style=label.style_label_down, color=color.new(color.red, 20), textcolor=color.white, size=size.small)
+
+alertcondition(sigLong, "Break&Retest LONG", "Подтверждённый ретест вверх")
+alertcondition(sigShort, "Break&Retest SHORT", "Подтверждённый ретест вниз")
